@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: "https://github.com/Hari-9390-356441/onlinebookstore.git"
+                git branch: 'master', url: "${GIT_REPO}"
             }
         }
 
@@ -50,11 +50,17 @@ pipeline {
         stage('Deploy to Tomcat') {
             steps {
                 script {
-                    // If deploying WAR directly to Tomcat server
+                    // Deploy WAR directly to Tomcat if needed
                     sh 'cp target/*.war /opt/tomcat/webapps/onlinebookstore.war || true'
 
-                    // Or if deploying via Docker
+                    // Stop & remove old container if exists
+                    sh 'docker rm -f onlinebookstore || true'
+
+                    // Run new container
                     sh "docker run -d -p 9090:8080 --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
+
+                    // Optional: remove dangling images to save space
+                    sh 'docker image prune -f || true'
                 }
             }
         }

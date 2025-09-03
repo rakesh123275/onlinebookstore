@@ -10,12 +10,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: "${GIT_REPO}"
+                git branch: 'master', url: "https://github.com/Hari-9390-356441/onlinebookstore.git"
             }
         }
 
         stage('Build with Maven') {
             steps {
+                // Use mvnw if your project has Maven wrapper
                 sh 'mvn clean package -DskipTests=true'
             }
         }
@@ -47,19 +48,16 @@ pipeline {
             }
         }
 
-        stage('Deploy to Tomcat') {
+        stage('Deploy to Docker') {
             steps {
                 script {
-                    // Deploy WAR directly to Tomcat if needed
-                    sh 'cp target/*.war /opt/tomcat/webapps/onlinebookstore.war || true'
-
                     // Stop & remove old container if exists
                     sh 'docker rm -f onlinebookstore || true'
 
-                    // Run new container
+                    // Run new container from latest image
                     sh "docker run -d -p 9090:8080 --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
 
-                    // Optional: remove dangling images to save space
+                    // Cleanup dangling images
                     sh 'docker image prune -f || true'
                 }
             }

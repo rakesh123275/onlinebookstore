@@ -1,5 +1,5 @@
 # =========================
-# Stage 1: Build the JAR
+# Stage 1: Build WAR with Maven
 # =========================
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
@@ -11,15 +11,21 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # =========================
-# Stage 2: Runtime
+# Stage 2: Tomcat Runtime
 # =========================
-FROM eclipse-temurin:17-jdk-alpine
-WORKDIR /app
+FROM tomcat:10.1-jdk17-temurin
+WORKDIR /usr/local/tomcat/webapps/
 
-# Copy JAR file (force rename to app.jar)
-COPY --from=build /app/target/*.jar /app/app.jar
+# Remove default ROOT app
+RUN rm -rf ROOT
 
+# Copy WAR from build stage and deploy as ROOT
+COPY --from=build /app/target/*.war ROOT.war
+
+# Expose custom port
 EXPOSE 9090
-ENV JAVA_OPTS="-Dserver.port=9090 -Dserver.address=0.0.0.0"
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+# Change Tomcat to listen on 9090 instead of 8080
+RUN sed -i 's/port="8080"/port="9090"/' /usr/local/tomcat/conf/server.xml
+
+CMD ["catalina.sh", "run"]

@@ -3,27 +3,26 @@ pipeline {
 
     environment {
         DOCKER_HUB_REPO = "harigopal118/onlinebookstore"
-        DOCKER_CREDENTIALS = 'dockerhub-creds'   // Jenkins credentials ID
+        DOCKER_CREDENTIALS = 'dockerhub-creds'
         GIT_REPO = "https://github.com/Hari-9390-356441/onlinebookstore.git"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: "https://github.com/Hari-9390-356441/onlinebookstore.git"
+                git branch: 'master', url: "${GIT_REPO}"
             }
         }
 
         stage('Build with Maven') {
             steps {
-                // Use mvnw if your project has Maven wrapper
-                sh 'mvn clean package -DskipTests=true'
+                sh './mvnw clean package -DskipTests=true || mvn clean package -DskipTests=true'
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                sh 'mvn test'
+                sh './mvnw test || mvn test'
             }
         }
 
@@ -51,14 +50,30 @@ pipeline {
         stage('Deploy to Docker') {
             steps {
                 script {
-                    // Stop & remove old container if exists
                     sh 'docker rm -f onlinebookstore || true'
-
-                    // Run new container from latest image
-                    sh "docker run -d -p 9090:8080 --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
-
-                    // Cleanup dangling images
+                    sh "docker run -d -p 9090:8080 --restart always --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
                     sh 'docker image prune -f || true'
+                    sh 'docker logs --tail 50 onlinebookstore || true'
+                }
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                script {
+                    echo "⏳ Waiting for app to become healthy..."
+                    // Try for 60s, checking every 5s
+                    retry(12) {
+                        sleep 5
+                        sh '''
+                          if curl -s http://localhost:9090/actuator/health | grep -q '"status":"UP"'; then
+                            echo "✅ Application is healthy!"
+                          else
+                            echo "Still waiting for app..."
+                            exit 1
+                          fi
+                        '''
+                    }
                 }
             }
         }
@@ -70,7 +85,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "✅ Build & Deployment Successful!"
+            echo "✅ Build, Push & Deployment Successful!"
         }
         failure {
             echo "❌ Build or Deployment Failed!"

@@ -54,7 +54,7 @@ pipeline {
                     sh 'cp target/*.war /opt/tomcat/webapps/onlinebookstore.war || true'
 
                     // Or if deploying via Docker
-                    sh "docker run -d -p 8080:8080 --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
+                    sh "docker run -d -p 9090:8080 --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
                 }
             }
         }

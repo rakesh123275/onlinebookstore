@@ -46,13 +46,4 @@ pipeline {
             }
         }
     }
-
-    post {
-        success {
-            echo "✅ Build & Deployment Successful!"
-        }
-        failure {
-            echo "❌ Pipeline Failed!"
-        }
-    }
 }

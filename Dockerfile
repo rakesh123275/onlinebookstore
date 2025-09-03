@@ -13,11 +13,10 @@ FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
 # Copy jar file from build stage
-COPY --from=build /app/target/onlinebookstore-*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose the application port (change if not 8080)
+# Expose the application port (Spring Boot default is 8080)
 EXPOSE 8080
 
 # Run the jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
-

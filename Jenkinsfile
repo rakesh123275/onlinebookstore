@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_REPO = "your-harigopal118/onlinebookstore"
+        DOCKER_HUB_REPO = "harigopal118/onlinebookstore"
         DOCKER_CREDENTIALS = 'dockerhub-creds'   // Jenkins credentials ID
         GIT_REPO = "https://github.com/Hari-9390-356441/onlinebookstore.git"
     }

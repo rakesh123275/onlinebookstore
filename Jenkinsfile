@@ -14,36 +14,58 @@ pipeline {
             }
         }
 
-        stage('Build App') {
+        stage('Build WAR with Maven') {
             steps {
-                sh 'chmod +x mvnw || true'
-                sh './mvnw clean package -DskipTests || mvn clean package -DskipTests'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ."
+                script {
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ."
+                }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    sh "docker push ${DOCKER_HUB_REPO}:${BUILD_NUMBER}"
-                    sh "docker tag ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest"
-                    sh "docker push ${DOCKER_HUB_REPO}:latest"
+                script {
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                        sh "docker push ${DOCKER_HUB_REPO}:${BUILD_NUMBER}"
+                        sh "docker tag ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest"
+                        sh "docker push ${DOCKER_HUB_REPO}:latest"
+                    }
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Docker') {
             steps {
-                sh 'docker rm -f onlinebookstore || true'
-                sh "docker run -d -p 9090:8080 --restart always --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
-                sh 'docker image prune -f || true'
+                script {
+                    // stop old container
+                    sh 'docker rm -f onlinebookstore || true'
+
+                    // run new container
+                    sh "docker run -d -p 9090:9090 --restart always --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
+
+                    // cleanup unused images
+                    sh 'docker image prune -f || true'
+                }
             }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo "✅ Build, Push & Deployment Successful!"
+        }
+        failure {
+            echo "❌ Build or Deployment Failed!"
         }
     }
 }

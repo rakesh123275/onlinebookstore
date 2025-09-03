@@ -16,7 +16,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
 # Expose the application port (Spring Boot default is 8080)
-EXPOSE 8080
+EXPOSE 9090
 
 # Run the jar
 ENTRYPOINT ["java", "-jar", "app.jar"]

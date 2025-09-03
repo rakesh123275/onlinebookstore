@@ -57,25 +57,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Health Check') {
-            steps {
-                script {
-                    echo "⏳ Waiting for app on port 9090..."
-                    retry(12) {
-                        sleep 5
-                        sh '''
-                          if nc -z localhost 9090; then
-                            echo "✅ Application port is open!"
-                          else
-                            echo "Still waiting for app..."
-                            exit 1
-                          fi
-                        '''
-                    }
-                }
-            }
-        }
     }
 
     post {

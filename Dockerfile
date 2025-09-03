@@ -1,43 +1,31 @@
 # =========================
-# Stage 1: Build with Maven
+# Stage 1: Build the JAR
 # =========================
 FROM maven:3.9.6-eclipse-temurin-17 AS build
-
 WORKDIR /app
 
-# Copy pom.xml and download dependencies first (for better caching)
+# Copy pom.xml and download dependencies first (better caching)
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code
-COPY src ./src
-
-# Build the application (skip tests – handled in Jenkins)
+# Copy the rest of the project and build
+COPY . .
 RUN mvn clean package -DskipTests
 
-# Rename the generated jar to app.jar (dynamic: ignores -sources.jar, -tests.jar, etc.)
-RUN cp $(find target -type f -name "*.jar" ! -name "*sources.jar" ! -name "*tests.jar" | head -n 1) /app/app.jar
-
-
 # =========================
-# Stage 2: Runtime Image
+# Stage 2: Runtime Container
 # =========================
-FROM eclipse-temurin:17-jdk-jammy
-
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
-# Create non-root user
-RUN useradd -m appuser
+# Copy the JAR from the build stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy renamed jar from build stage
-COPY --from=build /app/app.jar app.jar
+# Expose 9090 as internal port
+EXPOSE 9090
 
-# Change ownership for security
-RUN chown appuser:appuser app.jar
-USER appuser
+# Force Spring Boot / Tomcat app to listen on 9090
+ENV JAVA_OPTS="-Dserver.port=9090 -Dserver.address=0.0.0.0"
 
-# Expose Spring Boot default port
-EXPOSE 8080
-
-# Run application with container-friendly JVM options
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+# Run the JAR
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

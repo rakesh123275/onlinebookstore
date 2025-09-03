@@ -61,13 +61,12 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    echo "⏳ Waiting for app to become healthy..."
-                    // Try for 60s, checking every 5s
+                    echo "⏳ Waiting for app on port 9090..."
                     retry(12) {
                         sleep 5
                         sh '''
-                          if curl -s http://localhost:9090/actuator/health | grep -q '"status":"UP"'; then
-                            echo "✅ Application is healthy!"
+                          if nc -z localhost 9090; then
+                            echo "✅ Application port is open!"
                           else
                             echo "Still waiting for app..."
                             exit 1

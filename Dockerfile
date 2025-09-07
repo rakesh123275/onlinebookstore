@@ -5,27 +5,25 @@ FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn -B dependency:go-offline
 
 COPY . .
-RUN mvn clean package -DskipTests
+RUN mvn -B clean package -DskipTests
 
 # =========================
-# Stage 2: Tomcat Runtime
+# Stage 2: Tomcat 9 Runtime (javax.servlet compatible)
 # =========================
-FROM tomcat:10.1-jdk17-temurin
-WORKDIR /usr/local/tomcat/webapps/
+FROM tomcat:9.0-jdk17-temurin
+ENV CATALINA_HOME=/usr/local/tomcat
+WORKDIR $CATALINA_HOME
 
-# Remove default ROOT app
-RUN rm -rf ROOT
+# Clean default webapps and deploy our WAR as ROOT
+RUN rm -rf webapps/*
+COPY --from=build /app/target/onlinebookstore.war webapps/ROOT.war
 
-# Copy WAR from build stage and deploy as ROOT
-COPY --from=build /app/target/*.war ROOT.war
+# Switch Tomcat HTTP connector to 9090
+RUN sed -i 's/port="8080"/port="9090"/' conf/server.xml
 
-# Expose custom port
 EXPOSE 9090
-
-# Change Tomcat to listen on 9090 instead of 8080
-RUN sed -i 's/port="8080"/port="9090"/' /usr/local/tomcat/conf/server.xml
 
 CMD ["catalina.sh", "run"]

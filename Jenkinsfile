@@ -1,11 +1,12 @@
-
 pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_REPO = "harigopal118/onlinebookstore"
+        DOCKER_HUB_REPO   = "harigopal118/onlinebookstore"
         DOCKER_CREDENTIALS = "dockerhub-creds"
-        GIT_REPO = "https://github.com/Hari-9390-356441/onlinebookstore.git"
+        GIT_REPO           = "https://github.com/Hari-9390-356441/onlinebookstore.git"
+        CONTAINER_NAME     = "onlinebookstore"
+        APP_PORT           = "9090"
     }
 
     stages {
@@ -15,16 +16,10 @@ pipeline {
             }
         }
 
-        stage('Build WAR with Maven') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ."
+                    sh "docker build -t ${DOCKER_HUB_REPO}:${BUILD_NUMBER} -t ${DOCKER_HUB_REPO}:latest ."
                 }
             }
         }
@@ -35,7 +30,6 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
                         sh "docker push ${DOCKER_HUB_REPO}:${BUILD_NUMBER}"
-                        sh "docker tag ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest"
                         sh "docker push ${DOCKER_HUB_REPO}:latest"
                     }
                 }
@@ -45,14 +39,47 @@ pipeline {
         stage('Deploy to Docker') {
             steps {
                 script {
-                    // stop old container
-                    sh 'docker rm -f onlinebookstore || true'
+                    // Stop and remove old container (ignore errors)
+                    sh "docker rm -f ${CONTAINER_NAME} || true"
 
-                    // run new container
-                    sh "docker run -d -p 9090:9090 --restart always --name onlinebookstore ${DOCKER_HUB_REPO}:latest"
+                    // Run new container
+                    sh """
+                      docker run -d --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:${APP_PORT} \
+                        --restart unless-stopped \
+                        ${DOCKER_HUB_REPO}:latest
+                    """
 
-                    // cleanup unused images
-                    sh 'docker image prune -f || true'
+                    // Quick health check: container status + port open
+                    sh """
+                      sleep 5
+                      docker ps --filter "name=${CONTAINER_NAME}"
+                      # Fail if container exited
+                      if [ "\$(docker inspect -f '{{.State.Running}}' ${CONTAINER_NAME})" != "true" ]; then
+                        echo "Container is not running. Recent logs:"
+                        docker logs --tail=200 ${CONTAINER_NAME} || true
+                        exit 1
+                      fi
+                    """
+                }
+            }
+        }
+
+        stage('App Health Check') {
+            steps {
+                script {
+                    // Try reaching Tomcat on the mapped port, retry a few times
+                    retry(10) {
+                        sleep 3
+                        sh """
+                          if curl -sSf http://localhost:${APP_PORT}/ >/dev/null; then
+                            echo "App responded OK."
+                          else
+                            echo "Waiting for app on port ${APP_PORT}..."
+                            exit 1
+                          fi
+                        """
+                    }
                 }
             }
         }
@@ -60,6 +87,8 @@ pipeline {
 
     post {
         always {
+            echo "---- Container Logs (tail) ----"
+            sh "docker logs --tail=100 ${CONTAINER_NAME} || true"
             cleanWs()
         }
         success {

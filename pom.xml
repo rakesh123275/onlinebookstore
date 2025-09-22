@@ -32,18 +32,18 @@
   </build>
 
   <dependencies>
-    <!-- Database drivers (keep only the one you need in production) -->
+    <!-- Choose only the DB you need -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>42.3.7</version>
     </dependency>
 
-    <dependency>
+    <!-- <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
       <version>8.0.28</version>
-    </dependency>
+    </dependency> -->
 
     <!-- Servlet API provided by Tomcat 9 at runtime -->
     <dependency>
@@ -53,24 +53,18 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
-         
+
   <distributionManagement>
     <repository>
       <id>releases</id>
       <name>Releases Repository</name>
-      <url>/<project>
-  ...
-  <distributionManagement>
-    <repository>
-      <id>releases</id>
-      <name>Releases Repository</name>
-      <url>http://65.0.21.228:8081/repository/maven-releases//maven-releases/</url>
+      <url>http://65.0.21.228:8081/repository/maven-releases/maven-releases/</url>
     </repository>
     <snapshotRepository>
       <id>snapshots</id>
       <name>Snapshots Repository</name>
-      <url>http://65.0.21.228:8081/repository/maven-snapshots//maven-snapshots/</url>
+      <url>http://65.0.21.228:8081/repository/maven-snapshots/maven-snapshots/</url>
     </snapshotRepository>
   </distributionManagement>
-  ...
+
 </project>

@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_REPO   = "harigopal118/onlinebookstore"
+        DOCKER_HUB_REPO   = "rakesh123275/onlinebookstore"
         DOCKER_CREDENTIALS = "dockerhub-creds"
-        GIT_REPO           = "https://github.com/Hari-9390-356441/onlinebookstore.git"
+        GIT_REPO           = 
         CONTAINER_NAME     = "onlinebookstore"
         APP_PORT           = "9090"
     }

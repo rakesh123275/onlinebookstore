@@ -36,4 +36,66 @@ pipeline {
             }
         }
 
-        stage('Deploy to Do
+        stage('Deploy to Docker') {
+            steps {
+                script {
+                    // Stop and remove old container (ignore errors)
+                    sh "docker rm -f ${CONTAINER_NAME} || true"
+
+                    // Run new container
+                    sh """
+                      docker run -d --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:${APP_PORT} \
+                        --restart unless-stopped \
+                        ${DOCKER_HUB_REPO}:latest
+                    """
+
+                    // Quick health check: container status + port open
+                    sh """
+                      sleep 5
+                      docker ps --filter "name=${CONTAINER_NAME}"
+                      # Fail if container exited
+                      if [ "\$(docker inspect -f '{{.State.Running}}' ${CONTAINER_NAME})" != "true" ]; then
+                        echo "Container is not running. Recent logs:"
+                        docker logs --tail=200 ${CONTAINER_NAME} || true
+                        exit 1
+                      fi
+                    """
+                }
+            }
+        }
+
+        stage('App Health Check') {
+            steps {
+                script {
+                    // Try reaching Tomcat on the mapped port, retry a few times
+                    retry(10) {
+                        sleep 3
+                        sh """
+                          if curl -sSf http://localhost:${APP_PORT}/ >/dev/null; then
+                            echo "App responded OK."
+                          else
+                            echo "Waiting for app on port ${APP_PORT}..."
+                            exit 1
+                          fi
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "---- Container Logs (tail) ----"
+            sh "docker logs --tail=100 ${CONTAINER_NAME} || true"
+            cleanWs()
+        }
+        success {
+            echo "✅ Build, Push & Deployment Successful!"
+        }
+        failure {
+            echo "❌ Build or Deployment Failed!"
+        }
+    }
+}

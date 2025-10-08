@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_HUB_REPO   = "rakesh123275/onlinebookstore"
         DOCKER_CREDENTIALS = "dockerhub-creds"
-        GIT_REPO           = 
+        GIT_REPO           = https://github.com/rakesh123275/onlinebookstore.git
         CONTAINER_NAME     = "onlinebookstore"
         APP_PORT           = "9090"
     }
